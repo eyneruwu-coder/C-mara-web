@@ -466,6 +466,7 @@
   /* =========================================================
      Grabación de video
      ========================================================= */
+  let pendingReload = false, swReg = null;
   let recorder = null, chunks = [], recAudio = [], recStart = 0, recPaused = 0, pauseAt = 0, recTick = null;
 
   function pickMime() {
@@ -509,6 +510,7 @@
       const blob = new Blob(chunks, { type: type.split(';')[0] });
       chunks = [];
       if (blob.size) await saveItem('video', blob); else toast('La grabación quedó vacía');
+      if (pendingReload) location.reload();
     };
     recorder.start(1000);
     recStart = Date.now(); recPaused = 0;
@@ -826,8 +828,20 @@
     deferredPrompt = null; updateInstallUI();
   });
 
+  // Actualización automática: si llega una versión nueva, la app se recarga sola
   if ('serviceWorker' in navigator) {
-    addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;   // primera instalación: no hace falta recargar
+      if (recorder && recorder.state !== 'inactive') { pendingReload = true; return; }
+      reloading = true; location.reload();
+    });
+    addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+        .then(reg => { swReg = reg; reg.update().catch(() => {}); })
+        .catch(() => {});
+    });
   }
 
   /* =========================================================
@@ -844,6 +858,7 @@
       stopStream();
     } else {
       startCamera(); requestWake();
+      if (swReg) swReg.update().catch(() => {});
     }
   });
 

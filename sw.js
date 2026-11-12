@@ -1,5 +1,6 @@
 // Service worker: permite usar la app sin conexión y que se pueda instalar.
-const VERSION = 'camara-v3';
+// Con internet siempre pide la versión más nueva; sin internet usa la copia guardada.
+const VERSION = 'camara-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -16,7 +17,17 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(VERSION)
+      .then(cache => Promise.all(ASSETS.map(url =>
+        // cache: 'reload' evita copias viejas guardadas por el navegador
+        fetch(new Request(url, { cache: 'reload' })).then(res => {
+          if (!res.ok) throw new Error('No se pudo descargar ' + url);
+          return cache.put(url, res);
+        })
+      )))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -27,26 +38,32 @@ self.addEventListener('activate', e => {
   );
 });
 
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(v => { clearTimeout(t); resolve(v); }, err => { clearTimeout(t); reject(err); });
+  });
+}
+
+async function networkFirst(req) {
+  const cache = await caches.open(VERSION);
+  try {
+    const res = await withTimeout(fetch(req, { cache: 'no-cache' }), 5000);
+    if (res && res.ok) cache.put(req, res.clone());
+    return res;
+  } catch (err) {
+    const hit = await cache.match(req, { ignoreSearch: req.mode === 'navigate' });
+    if (hit) return hit;
+    if (req.mode === 'navigate') {
+      const page = await cache.match('./index.html');
+      if (page) return page;
+    }
+    return Response.error();
+  }
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-
-  // Páginas: red primero, caché si no hay conexión
-  if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req).catch(() => caches.match('./index.html', { ignoreSearch: true }))
-    );
-    return;
-  }
-
-  // Archivos: caché primero y se actualizan en segundo plano
-  e.respondWith(
-    caches.match(req).then(hit => {
-      const net = fetch(req).then(res => {
-        if (res && res.ok) caches.open(VERSION).then(c => c.put(req, res.clone()));
-        return res;
-      }).catch(() => hit);
-      return hit || net;
-    })
-  );
+  e.respondWith(networkFirst(req));
 });
