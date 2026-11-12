@@ -6,6 +6,7 @@
   <title>Cámara</title>
   <meta name="description" content="Cámara web instalable: fotos, video y ajustes, directo desde el navegador.">
   <meta name="theme-color" content="#0E1013">
+  <meta name="color-scheme" content="dark">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
@@ -15,6 +16,16 @@
   <meta name="apple-mobile-web-app-title" content="Cámara">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="styles.css">
+  <script>
+    // Si algo falla al iniciar (por ejemplo en un navegador muy viejo), lo muestra en pantalla.
+    window.addEventListener("error", function (e) {
+      if (window.__camReady) return;
+      var d = document.createElement("div");
+      d.style.cssText = "position:fixed;top:0;right:0;bottom:0;left:0;z-index:99;background:#0E1013;color:#ECEFF4;padding:24px;font:16px/1.5 sans-serif;overflow:auto";
+      d.textContent = "Error al iniciar: " + (e.message || "desconocido") + " (" + String(e.filename || "").split("/").pop() + ":" + e.lineno + ")";
+      document.body.appendChild(d);
+    });
+  </script>
 </head>
 <body>
 
@@ -190,9 +201,7 @@
     <button class="ibtn" data-close aria-label="Cerrar visor"><svg class="ic"><use href="#i-close"/></svg></button>
     <span id="viewCount"></span>
   </div>
-  <div id="viewStage"></div>
-  <button id="viewPrev" class="ibtn nav l" aria-label="Anterior"><svg class="ic"><use href="#i-chevron-l"/></svg></button>
-  <button id="viewNext" class="ibtn nav r" aria-label="Siguiente"><svg class="ic"><use href="#i-chevron-r"/></svg></button>
+  <div id="viewStage"><div id="viewTrack"></div></div>
   <div class="actions">
     <button id="actSave" class="act"><svg class="ic"><use href="#i-download"/></svg>Guardar</button>
     <button id="actShare" class="act"><svg class="ic"><use href="#i-share"/></svg>Compartir</button>

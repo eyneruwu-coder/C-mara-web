@@ -31,7 +31,7 @@ html, body {
 }
 
 button, select, input { font: inherit; color: inherit; }
-button { cursor: pointer; }
+button { cursor: pointer; touch-action: manipulation; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .ic {
@@ -43,8 +43,8 @@ button { cursor: pointer; }
 #i-play, #i-pause { fill: currentColor; }
 
 /* ---------- Escena ---------- */
-#app { position: fixed; inset: 0; }
-#viewfinder { position: absolute; inset: 0; background: #000; touch-action: none; overflow: hidden; }
+#app { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+#viewfinder { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: #000; touch-action: none; overflow: hidden; }
 #video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
 #video.mirror { transform: scaleX(-1); }
 
@@ -59,12 +59,12 @@ button { cursor: pointer; }
 }
 #grid.on { display: block; }
 
-#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#flash { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: #fff; opacity: 0; pointer-events: none; }
 #flash.go { animation: flash .28s ease-out; }
 @keyframes flash { 0% { opacity: .85; } 100% { opacity: 0; } }
 
 #countdown {
-  position: absolute; inset: 0; display: grid; place-items: center;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center;
   font-size: 30vmin; font-weight: 200; color: #fff; pointer-events: none;
   text-shadow: 0 2px 30px rgba(0, 0, 0, .5);
 }
@@ -89,10 +89,9 @@ button { cursor: pointer; }
   background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   color: var(--text); transition: background .15s, color .15s;
 }
-.ibtn.wide { width: auto; min-width: 44px; padding: 0 12px; border-radius: 22px; }
 .ibtn.wide span { font-size: 14px; font-variant-numeric: tabular-nums; }
 .ibtn.wide span:empty { display: none; }
-.ibtn.wide:has(span:empty) { padding: 0; width: 44px; }
+.ibtn.wide.has-label { width: auto; min-width: 44px; padding: 0 12px; border-radius: 22px; }
 .ibtn.flat { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .ibtn.big { width: 52px; height: 52px; }
 .ibtn[aria-pressed="true"], .ibtn.active { background: var(--accent); color: #06101f; }
@@ -145,7 +144,7 @@ body.recording .modes { opacity: .35; pointer-events: none; }
   border: 2px solid rgba(255, 255, 255, .75); background: var(--panel) center / cover no-repeat;
   display: grid; place-items: center; color: var(--muted); position: relative;
 }
-.thumb img, .thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.thumb img, .thumb video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 .thumb .ic { width: 22px; height: 22px; }
 
 /* Obturador: anillo doble, el centro cambia con el modo */
@@ -165,7 +164,7 @@ body.recording #shutter span { border-radius: 14px; transform: scale(.56); }
 
 /* ---------- Mensajes ---------- */
 #msg {
-  position: absolute; inset: 0; z-index: 5; display: grid; place-items: center;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 5; display: grid; place-items: center;
   padding: 24px; background: var(--ink);
 }
 .msg-card { max-width: 380px; text-align: left; }
@@ -193,7 +192,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .55); }
 
 #sheet {
   width: 100%; max-width: 540px; margin: auto auto 0; border-radius: 22px 22px 0 0;
-  background: var(--panel); max-height: 88dvh; overflow: hidden;
+  background: var(--panel); max-height: 88vh; max-height: 88dvh; overflow: hidden;
 }
 #sheet[open] { display: flex; flex-direction: column; animation: up .25s ease-out; }
 @keyframes up { from { transform: translateY(40px); opacity: 0; } }
@@ -247,8 +246,8 @@ dialog.dark { background: #000; }
   grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   padding: 0 calc(var(--sr) + 3px) calc(var(--sb) + 3px) calc(var(--sl) + 3px);
 }
-.tile { position: relative; aspect-ratio: 1; padding: 0; border: 0; background: var(--panel); overflow: hidden; border-radius: 4px; }
-.tile img, .tile video { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.tile { position: relative; display: block; width: 100%; height: 0; padding: 0 0 100% 0; border: 0; background: var(--panel); overflow: hidden; border-radius: 4px; }
+.tile img, .tile video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
 .tile .badge {
   position: absolute; right: 6px; bottom: 6px; width: 24px; height: 24px; border-radius: 50%;
   display: grid; place-items: center; background: rgba(0, 0, 0, .6); color: #fff;
@@ -256,12 +255,11 @@ dialog.dark { background: #000; }
 .tile .badge .ic { width: 12px; height: 12px; }
 #galEmpty { margin: auto; text-align: center; color: var(--muted); line-height: 1.6; padding: 24px; }
 
-#viewStage { position: absolute; inset: 0; display: grid; place-items: center; touch-action: pan-y; }
-#viewStage img, #viewStage video { max-width: 100%; max-height: 100%; object-fit: contain; }
-.nav { position: absolute; top: 50%; z-index: 2; transform: translateY(-50%); }
-.nav.l { left: calc(var(--sl) + 10px); }
-.nav.r { right: calc(var(--sr) + 10px); }
-.nav[disabled] { opacity: 0; pointer-events: none; }
+#viewStage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; touch-action: pan-y; }
+#viewTrack { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; will-change: transform; transform: translate3d(-100%, 0, 0); }
+.slide { flex: 0 0 100%; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.slide img, .slide video { max-width: 100%; max-height: 100%; object-fit: contain; background: #000; opacity: 0; transition: opacity .18s ease; -webkit-user-drag: none; }
+.slide .ready { opacity: 1; }
 .actions {
   position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 8px;
   padding: 28px 16px calc(var(--sb) + 14px); background: linear-gradient(to top, rgba(0, 0, 0, .65), transparent);

@@ -1,5 +1,5 @@
 // Service worker: permite usar la app sin conexión y que se pueda instalar.
-const VERSION = 'camara-v1';
+const VERSION = 'camara-v3';
 const ASSETS = [
   './',
   './index.html',

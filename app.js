@@ -32,8 +32,7 @@
     advReset: $('#advReset'), btnResetAdv: $('#btnResetAdv'), outQuality: $('#outQuality'),
     installText: $('#installText'), btnInstall: $('#btnInstall'),
     gallery: $('#gallery'), galGrid: $('#galGrid'), galCount: $('#galCount'), galEmpty: $('#galEmpty'),
-    viewer: $('#viewer'), viewStage: $('#viewStage'), viewCount: $('#viewCount'),
-    viewPrev: $('#viewPrev'), viewNext: $('#viewNext'),
+    viewer: $('#viewer'), viewStage: $('#viewStage'), viewTrack: $('#viewTrack'), viewCount: $('#viewCount'),
     actSave: $('#actSave'), actShare: $('#actShare'), actDelete: $('#actDelete')
   };
 
@@ -575,6 +574,7 @@
   function applyTimerUI() {
     el.timerLabel.textContent = S.timer ? `${S.timer} s` : '';
     el.btnTimer.classList.toggle('active', S.timer > 0);
+    el.btnTimer.classList.toggle('has-label', S.timer > 0);
     el.btnTimer.setAttribute('aria-label', S.timer ? `Temporizador: ${S.timer} segundos` : 'Temporizador: desactivado');
   }
   el.btnTimer.addEventListener('click', () => {
@@ -658,41 +658,112 @@
   el.btnGallery.addEventListener('click', openGallery);
   el.gallery.addEventListener('close', () => { revokeUrls(); el.galGrid.replaceChildren(); });
 
-  function openViewer(i) {
-    viewIndex = i;
-    showViewer();
-    if (!el.viewer.open) el.viewer.showModal();
-  }
-  function showViewer() {
-    const it = items[viewIndex];
-    if (!it) { el.viewer.close(); return; }
-    el.viewStage.replaceChildren();
+  const vtrack = el.viewTrack;
+  let animating = false, drag = null;
+
+  function makeSlide(i, current) {
+    const slide = document.createElement('div'); slide.className = 'slide';
+    const it = items[i];
+    if (!it) return slide;
     let m;
-    if (it.type === 'photo') { m = document.createElement('img'); m.alt = it.name; }
-    else { m = document.createElement('video'); m.controls = true; m.playsInline = true; m.preload = 'metadata'; }
-    m.src = urls[viewIndex];
-    el.viewStage.append(m);
+    if (it.type === 'photo') {
+      m = document.createElement('img'); m.alt = it.name; m.decoding = 'async'; m.draggable = false;
+      m.addEventListener('load', () => m.classList.add('ready'));
+      m.src = urls[i];
+    } else {
+      m = document.createElement('video'); m.playsInline = true; m.preload = 'metadata'; m.controls = !!current;
+      m.addEventListener('loadeddata', () => m.classList.add('ready'));
+      m.src = urls[i] + '#t=0.1';
+    }
+    setTimeout(() => m.classList.add('ready'), 450);
+    slide.append(m);
+    return slide;
+  }
+
+  function renderSlides() {
+    vtrack.style.transition = 'none';
+    vtrack.style.transform = 'translate3d(-100%, 0, 0)';
+    vtrack.replaceChildren(makeSlide(viewIndex - 1, false), makeSlide(viewIndex, true), makeSlide(viewIndex + 1, false));
+  }
+
+  function updateViewerUI() {
     el.viewCount.textContent = `${viewIndex + 1} de ${items.length}`;
-    el.viewPrev.disabled = viewIndex <= 0;
-    el.viewNext.disabled = viewIndex >= items.length - 1;
     resetDelete();
   }
-  function stepViewer(d) {
-    const n = viewIndex + d;
-    if (n < 0 || n >= items.length) return;
-    viewIndex = n; showViewer();
-  }
-  el.viewPrev.addEventListener('click', () => stepViewer(-1));
-  el.viewNext.addEventListener('click', () => stepViewer(1));
-  el.viewer.addEventListener('close', () => { el.viewStage.replaceChildren(); resetDelete(); updateThumb(); });
 
-  let tx0 = null;
-  el.viewStage.addEventListener('touchstart', e => { tx0 = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
-  el.viewStage.addEventListener('touchend', e => {
-    if (tx0 == null) return;
-    const dx = e.changedTouches[0].clientX - tx0; tx0 = null;
-    if (Math.abs(dx) > 60) stepViewer(dx < 0 ? 1 : -1);
-  }, { passive: true });
+  function openViewer(i) {
+    viewIndex = i;
+    if (!el.viewer.open) el.viewer.showModal();
+    showViewer();
+  }
+  function showViewer() {
+    if (!items[viewIndex]) { el.viewer.close(); return; }
+    renderSlides();
+    updateViewerUI();
+  }
+
+  function snapBack() {
+    animating = true;
+    vtrack.style.transition = 'transform .22s ease-out';
+    vtrack.style.transform = 'translate3d(-100%, 0, 0)';
+    setTimeout(() => { animating = false; }, 230);
+  }
+
+  function slideTo(dir) {
+    const n = viewIndex + dir;
+    if (animating) return;
+    if (n < 0 || n >= items.length) { if (drag === null) snapBack(); return; }
+    animating = true;
+    vtrack.querySelectorAll('video').forEach(v => v.pause());
+    vtrack.style.transition = 'transform .28s cubic-bezier(.22, .8, .3, 1)';
+    vtrack.style.transform = `translate3d(${dir > 0 ? -200 : 0}%, 0, 0)`;
+    let finished = false;
+    const onEnd = e => { if (e.target === vtrack) finish(); };
+    const finish = () => {
+      if (finished) return; finished = true;
+      vtrack.removeEventListener('transitionend', onEnd);
+      viewIndex = n; animating = false;
+      renderSlides(); updateViewerUI();
+    };
+    vtrack.addEventListener('transitionend', onEnd);
+    setTimeout(finish, 380);
+  }
+  const stepViewer = d => slideTo(d);
+  el.viewer.addEventListener('close', () => { vtrack.replaceChildren(); resetDelete(); updateThumb(); });
+
+  /* Deslizar siguiendo el dedo */
+  el.viewStage.addEventListener('pointerdown', e => {
+    if (animating || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const v = e.target.closest && e.target.closest('video');
+    if (v) { const r = v.getBoundingClientRect(); if (e.clientY > r.bottom - 72) return; } // barra de controles del video
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, t: Date.now(), moving: false };
+  });
+  el.viewStage.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moving) {
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
+      drag.moving = true;
+      try { el.viewStage.setPointerCapture(e.pointerId); } catch { /* nada */ }
+      vtrack.style.transition = 'none';
+    }
+    const edge = (viewIndex === 0 && dx > 0) || (viewIndex === items.length - 1 && dx < 0);
+    drag.dx = edge ? dx / 3 : dx;
+    vtrack.style.transform = `translate3d(calc(-100% + ${drag.dx}px), 0, 0)`;
+  });
+  const endDrag = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null;
+    if (!d.moving) return;
+    const w = el.viewStage.clientWidth || 1;
+    const v = d.dx / Math.max(1, Date.now() - d.t);
+    const fast = Math.abs(v) > 0.4 && Math.abs(d.dx) > 30;
+    if (d.dx < 0 && (d.dx < -w * 0.22 || fast)) slideTo(1);
+    else if (d.dx > 0 && (d.dx > w * 0.22 || fast)) slideTo(-1);
+    else snapBack();
+  };
+  el.viewStage.addEventListener('pointerup', endDrag);
+  el.viewStage.addEventListener('pointercancel', endDrag);
 
   el.actSave.addEventListener('click', () => { const it = items[viewIndex]; if (it) { download(it); toast('Guardando en el teléfono…'); } });
   el.actShare.addEventListener('click', async () => {
@@ -781,6 +852,9 @@
   /* =========================================================
      Inicio
      ========================================================= */
+  window.__camReady = true;
+  addEventListener('error', ev => { if (!stream && el.msg.hidden) showMessage('Ocurrió un error', ev.message || 'Error desconocido'); });
+  addEventListener('unhandledrejection', ev => { if (!stream && el.msg.hidden) showMessage('Ocurrió un error', (ev.reason && ev.reason.message) || 'Error desconocido'); });
   syncControls(); applyTimerUI(); applyGridUI(); updateInstallUI(); updateThumb();
   if (new URLSearchParams(location.search).get('mode') === 'video') setMode('video'); else setMode('photo');
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
