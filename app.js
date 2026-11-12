@@ -868,6 +868,7 @@
      Inicio
      ========================================================= */
   window.__camReady = true;
+  try { sessionStorage.removeItem('camHeal'); } catch { /* nada */ }
   addEventListener('error', ev => { if (!stream && el.msg.hidden) showMessage('Ocurrió un error', ev.message || 'Error desconocido'); });
   addEventListener('unhandledrejection', ev => { if (!stream && el.msg.hidden) showMessage('Ocurrió un error', (ev.reason && ev.reason.message) || 'Error desconocido'); });
   syncControls(); applyTimerUI(); applyGridUI(); updateInstallUI(); updateThumb();

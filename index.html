@@ -15,11 +15,30 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Cámara">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=5">
   <script>
-    // Si algo falla al iniciar (por ejemplo en un navegador muy viejo), lo muestra en pantalla.
+    // Si algo falla al iniciar (por ejemplo por mezclar archivos de versiones distintas),
+    // la app limpia su caché una vez y se recarga sola. La galería no se toca.
     window.addEventListener("error", function (e) {
       if (window.__camReady) return;
+      try {
+        if (!sessionStorage.getItem("camHeal")) {
+          sessionStorage.setItem("camHeal", "1");
+          var jobs = [];
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }));
+          }
+          if (window.caches) {
+            jobs.push(caches.keys().then(function (ks) {
+              return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+            }));
+          }
+          Promise.all(jobs).then(function () { location.reload(); }, function () { location.reload(); });
+          return;
+        }
+      } catch (x) {}
       var d = document.createElement("div");
       d.style.cssText = "position:fixed;top:0;right:0;bottom:0;left:0;z-index:99;background:#0E1013;color:#ECEFF4;padding:24px;font:16px/1.5 sans-serif;overflow:auto";
       d.textContent = "Error al iniciar: " + (e.message || "desconocido") + " (" + String(e.filename || "").split("/").pop() + ":" + e.lineno + ")";
@@ -210,6 +229,6 @@
 </dialog>
 
 <canvas id="canvas" hidden></canvas>
-<script src="app.js"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

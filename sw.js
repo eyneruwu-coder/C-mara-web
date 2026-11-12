@@ -1,6 +1,6 @@
 // Service worker: permite usar la app sin conexión y que se pueda instalar.
 // Con internet siempre pide la versión más nueva; sin internet usa la copia guardada.
-const VERSION = 'camara-v4';
+const VERSION = 'camara-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -52,7 +52,7 @@ async function networkFirst(req) {
     if (res && res.ok) cache.put(req, res.clone());
     return res;
   } catch (err) {
-    const hit = await cache.match(req, { ignoreSearch: req.mode === 'navigate' });
+    const hit = await cache.match(req, { ignoreSearch: true });
     if (hit) return hit;
     if (req.mode === 'navigate') {
       const page = await cache.match('./index.html');
